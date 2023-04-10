@@ -376,3 +376,85 @@ edge_data_wet_season_ff = [(row["A"], row["B"], {"weight": row["DAI"]}) for row 
 ```Python
 weight_adjusted_wet_season_ff = list(map(lambda x: x * 3, weights_wet_season_ff))
 ```
+
+## Normalising and plotting DAI
+
+---
+
+- Describe data
+
+```Python
+print(df_pai_wet_ssn['PAI'].describe())
+print(df_pai_dry_ssn['PAI'].describe())
+print(df_dai_wet_ssn_ff['DAI'].describe())
+print(df_dai_dry_ssn_ff['DAI'].describe())
+print(df_dai_wet_ssn_mm['DAI'].describe())
+print(df_dai_dry_ssn_mm['DAI'].describe())
+```
+
+- Min-max normalise data
+
+```Python
+def normalise_column(col: pd.Series) -> pd.Series:
+  min = col.min()
+  max = col.max()
+  
+  def normalise_value(val):
+    normalised_val = (val - min) / (max - min)
+    return pd.Series((normalised_val))
+
+  return col.apply(normalise_value)
+
+df_pai_wet_ssn['NPAI'] = normalise_column(df_pai_wet_ssn['PAI'])
+```
+
+- Combine pairs into single value, in lexicographical order
+
+```Python
+def merge_in_order(val1, val2):
+  if val1 < val2:
+    return pd.Series((f"{val1} - {val2}"))
+  else:
+    return pd.Series((f"{val2} - {val1}"))
+
+df_pai_wet_ssn['pair'] = df_pai_wet_ssn.apply(lambda x: merge_in_order(x.A, x.B), axis=1)
+```
+
+- Remove redundant pairs
+
+```Python
+df_pai_wet_ssn_sorted = df_pai_wet_ssn_sorted[['pair', 'NPAI']].drop_duplicates()
+```
+
+- Cluster data
+
+```Python
+def cluster_pair(col: pd.Series) -> pd.Series:
+  return col.apply(lambda val: pd.Series(((val // 0.05) + 1)))
+
+df_pai_wet_ssn_sorted['cluster'] = cluster_pair(df_pai_wet_ssn_sorted['NPAI'])
+df_pai_dry_ssn_sorted['cluster'] = cluster_pair(df_pai_dry_ssn_sorted['NPAI'])
+df_dai_wet_ssn_ff_sorted['cluster'] = cluster_pair(df_dai_wet_ssn_ff_sorted['NDAI'])
+df_dai_dry_ssn_ff_sorted['cluster'] = cluster_pair(df_dai_dry_ssn_ff_sorted['NDAI'])
+df_dai_wet_ssn_mm_sorted['cluster'] = cluster_pair(df_dai_wet_ssn_mm_sorted['NDAI'])
+df_dai_dry_ssn_mm_sorted['cluster'] = cluster_pair(df_dai_dry_ssn_mm_sorted['NDAI'])
+```
+
+- Combine normalised PAI and DAI values for pairs that were observed in both season
+
+```Python
+df_pai = pd.merge(df_pai_dry_ssn_sorted, df_pai_wet_ssn_sorted, how="inner", on=['pair', "cluster"])
+```
+
+- Remove insignificants
+
+```Python
+df_pai = df_pai[(df_pai['NPAI_x'] > 0.009) & (df_pai['NPAI_y'] > 0.009)]
+```
+
+- Round values
+
+```Python
+df_pai.loc[:, 'NPAI_x'] = df_pai.NPAI_x.round(3)
+df_pai.loc[:, 'NPAI_y'] = df_pai.NPAI_y.round(3)
+```
