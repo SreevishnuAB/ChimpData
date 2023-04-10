@@ -235,3 +235,31 @@ for a, b in list_unique_pairs_wet_season:
   pai = (iab * n_total_neighbours_all_wet_season)/(n_ai * n_bi)
   pai_by_pairs_wet_season.append({'A': a, 'B': b, "PAI": pai})
 ```
+
+## Creating Network Graphs using PAI
+
+---
+
+- Create pair - PAI tuples for creating edges
+
+```Python
+pai_values_wet_season = list(map(lambda x: list(x), df_wet_season.values))
+pai_values_dry_season = list(map(lambda x: list(x), df_dry_season.values))
+
+edge_data_wet_season = [(a, b, {"weight": pai}) for a, b, pai in pai_values_wet_season]
+edge_data_dry_season = [(a, b, {"weight": pai}) for a, b, pai in pai_values_dry_season]
+```
+
+- Adjust edge opacity according to weight
+
+```Python
+edge_opacity_wet_season = [weight/weights_wet_season_copy[-1] for weight in weights_wet_season]
+```
+
+- Scale weights for the purpose of representation
+
+```Python
+weight_adjusted_wet_season = list(map(lambda x: x * 2, weights_wet_season))
+```
+
+- Clustering coefficient and mean clustering coefficient are available out of the box with NetworkX
