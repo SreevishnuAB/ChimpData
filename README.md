@@ -1,4 +1,8 @@
-# Data pre-processing (Proximity_Data_(Jan_Aug).ipynb)
+# Chimp Data
+
+## Data pre-processing (Proximity_Data_(Jan_Aug).ipynb)
+
+---
 
 - Add year column to the read data
 
@@ -69,4 +73,165 @@ for _, group in gpby_with_nn:
   first_row['neighbours_normal:other_neighbours'] = ','.join(str(v) for v in list(set_on))
   # print(first_row)
   list_processed_nn.append(first_row)
+```
+
+## Computing PAI
+
+---
+
+- Fill empty cells with empty string (for easier comparisons necessary down the line)
+
+```Python
+df_pai = df_pai.fillna('')
+```
+
+- Rename columns with terms from PAI formula for ease of understanding
+
+```Python
+df_pai = df_pai.rename(columns={"fuata_follow": "A", "neighbours_normal:nearest_neighbour": "B", "neighbours_normal:other_neighbours": "party"})
+```
+
+- Uniformize values
+
+```Python
+df_pai['A'] = df_pai['A'].str.lower()
+df_pai['B'] = df_pai['B'].str.lower()
+df_pai['party'] = df_pai['party'].str.lower()
+```
+
+- Clean names of inviduals in columns A and B
+
+```Python
+valid_names: List = list(set(df_pai['A'].unique()))
+valid_names.remove("unknown")
+.
+.
+.
+to_be_cleaned = list(set(df_pai['B'].unique()) - set(df_pai['A'].unique()))
+to_be_cleaned.sort(key=len)
+to_be_cleaned
+.
+.
+.
+valid_names.extend(to_be_cleaned[0:6])
+.
+.
+.
+df_pai.loc[df_pai['B'] == "bingwabingwa", 'B'] = "bingwa"
+.
+.
+.
+df_clean = pd.DataFrame()
+
+for name in valid_names:
+  df_clean = pd.concat([df_clean, df_pai[df_pai['B'] == name]])
+.
+.
+.
+df_pai_wo_0: pd.DataFrame = df_clean.loc[(df_clean['A'] != '0') & (df_clean['B'] != '0'), :]
+df_pai_wo_0 = df_pai_wo_0[~((df_pai_wo_0['A'] == 'sanaa') & (df_pai_wo_0['B'] == 'sanaa'))]
+df_pai_wo_0 = df_pai_wo_0[~((df_pai_wo_0['A'] == 'kinanda') & (df_pai_wo_0['B'] == 'kinanda'))]
+df_pai_wo_0 = df_pai_wo_0[~((df_pai_wo_0['A'] == 'kinanda') & (df_pai_wo_0['B'] == 'kinanda'))]
+df_pai_wo_0 = df_pai_wo_0[~((df_pai_wo_0['A'] == 'unknown') | (df_pai_wo_0['B'] == 'unknown'))]
+```
+
+- Add focal and nearest neighbours to party, for ease of comparison
+
+```Python
+df_pai_wo_0['party'] = df_pai_wo_0['A'] + ',' + df_pai_wo_0['B'] + ',' + df_pai_wo_0['party']
+```
+
+- Separate wet and dry season data
+
+```Python
+df_pai_wo_0['Month'] = pd.to_numeric(df_pai_wo_0['Month'])
+df_pai_wet_season = df_pai_wo_0[(df_pai_wo_0['Month'] >= 11) | (df_pai_wo_0['Month'] <= 4)]
+df_pai_dry_season = df_pai_wo_0[(df_pai_wo_0['Month'] >= 5) & (df_pai_wo_0['Month'] <= 10)]
+```
+
+- Find unique pairs for each season
+
+```Python
+gpby_wet_season = df_pai_wet_season.groupby(['A', 'B'])
+unique_pairs_wet_season = map(lambda item: frozenset(item), list(gpby_wet_season.groups.keys()))
+list_unique_pairs_wet_season: List = [list(i) for i in set(unique_pairs_wet_season)]
+list_unique_pairs_wet_season.sort(key=lambda x: x[0])
+unique_pair_count_wet_season: Dict = {}
+
+for a, b in list_unique_pairs_wet_season:
+  if a not in unique_pair_count_wet_season:
+    unique_pair_count_wet_season[a] = {}
+  unique_pair_count_wet_season[a][b] = 0
+```
+
+- Find unique individuals for each season
+
+```Python
+unique_individuals_wet_season = set()
+
+for pairs in list_unique_pairs_wet_season:
+  unique_individuals_wet_season.update(pairs)
+
+list_unique_individuals_wet_season = list(unique_individuals_wet_season)
+```
+
+- Compute frequency of occurence of each unique individual for each party size they were seen in
+
+```Python
+for individual in unique_individuals_wet_season:
+   for party in list_party_wet_season:
+    #  print(party)
+     if individual in party:
+       party_size = len(party)
+       if party_size in dict_party_freq_wet_season[individual].keys():
+         dict_party_freq_wet_season[individual][party_size] += 1
+       else:
+         dict_party_freq_wet_season[individual][party_size] = 1
+```
+
+- Create look-up table for denominator terms
+
+```Python
+n_total_neighbours_individual_wet_season = {}
+
+for individual, party_info in dict_party_freq_wet_season.items():
+  t = 0
+  for party_size, n_occurences in party_info.items():
+    t += (n_occurences * (party_size - 1))
+  n_total_neighbours_individual_wet_season[individual] = t
+```
+
+- Calculate numerator term 2
+
+```Python
+n_total_neighbours_all_wet_season = 0
+for party in list_party_wet_season:
+  party_size = len(party)
+  n_total_neighbours_all_wet_season += (party_size * (party_size - 1))
+```
+
+- Compute the occurence of each unique pair for each season
+
+```Python
+for a, b in list_unique_pairs_wet_season:
+  count = 0
+  for party in list_party_wet_season:
+    if a in party and b in party:
+      count += 1
+  if a not in pair_occurrence_wet_season.keys():
+    pair_occurrence_wet_season[a] = {}
+  pair_occurrence_wet_season[a][b] = count
+```
+
+- Calculate PAI for each pair A - B
+
+```Python
+pai_by_pairs_wet_season: List = []
+
+for a, b in list_unique_pairs_wet_season:
+  iab = pair_occurrence_wet_season[a][b]
+  n_ai = n_total_neighbours_individual_wet_season[a]
+  n_bi = n_total_neighbours_individual_wet_season[b]
+  pai = (iab * n_total_neighbours_all_wet_season)/(n_ai * n_bi)
+  pai_by_pairs_wet_season.append({'A': a, 'B': b, "PAI": pai})
 ```
