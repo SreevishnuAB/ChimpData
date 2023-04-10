@@ -75,7 +75,7 @@ for _, group in gpby_with_nn:
   list_processed_nn.append(first_row)
 ```
 
-## Computing PAI
+## Computing PAI (PAI.ipynb)
 
 ---
 
@@ -236,7 +236,7 @@ for a, b in list_unique_pairs_wet_season:
   pai_by_pairs_wet_season.append({'A': a, 'B': b, "PAI": pai})
 ```
 
-## Creating Network Graphs using PAI
+## Creating Network Graphs using PAI (Network_graphs.ipynb)
 
 ---
 
@@ -264,7 +264,7 @@ weight_adjusted_wet_season = list(map(lambda x: x * 2, weights_wet_season))
 
 - Clustering coefficient and mean clustering coefficient are available out of the box with NetworkX
 
-## Computing and plotting DAI of same-sex pairs
+## Computing and plotting DAI of same-sex pairs (DAI.ipynb)
 
 ---
 
@@ -377,7 +377,7 @@ edge_data_wet_season_ff = [(row["A"], row["B"], {"weight": row["DAI"]}) for row 
 weight_adjusted_wet_season_ff = list(map(lambda x: x * 3, weights_wet_season_ff))
 ```
 
-## Normalising and plotting DAI
+## Normalising and plotting DAI (Normalise_and_Plot.ipynb)
 
 ---
 
