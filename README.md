@@ -1,5 +1,15 @@
 # Chimp Data
 
+## Dependencies
+
+---
+
+- [Pandas](https://pandas.pydata.org/)
+- [NumPy](https://numpy.org/)
+- [NetworkX](https://networkx.org/)
+- [Plotly](https://plotly.com/python/)
+- [MatPlotLib](https://matplotlib.org/stable/tutorials/introductory/pyplot.html)
+
 ## Data pre-processing (Proximity_Data_(Jan_Aug).ipynb)
 
 ---
